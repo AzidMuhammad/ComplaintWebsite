@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { 
   Users, 
   FileText, 
@@ -17,6 +19,7 @@ interface Stats {
   pendingComplaints: number;
   inProgressComplaints: number;
   resolvedComplaints: number;
+  rejectedComplaints: number;
   totalUsers: number;
   chartData: ChartData[];
   recentActivities: Activity[];
@@ -40,53 +43,57 @@ export default function AdminDashboard() {
     pendingComplaints: 0,
     inProgressComplaints: 0,
     resolvedComplaints: 0,
+    rejectedComplaints: 0,
     totalUsers: 0,
     chartData: [],
     recentActivities: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     fetchStats();
   }, []);
 
-// Example of how to call the admin stats API in your admin dashboard component
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-const fetchStats = async () => {
-  try {
-    const res = await fetch('/api/admin/stats', {
-      method: 'GET',
-      credentials: 'include', // This ensures cookies are sent
-    });
+      const res = await fetch('/api/admin/stats', {
+        method: 'GET',
+        credentials: 'include', // Use cookies instead of token
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      // Handle the successful response
-      setStats(data);
-    } else if (res.status === 401) {
-      // Token invalid or expired
-      toast.error('Sesi Anda telah berakhir');
-      router.push('/login');
-    } else if (res.status === 403) {
-      // Access denied
-      toast.error('Akses ditolak - hanya admin yang dapat mengakses');
-      router.push('/');
-    } else {
+      if (res.ok) {
+        const data = await res.json();
+        setStats(data);
+      } else if (res.status === 401) {
+        // Token invalid or expired
+        toast.error('Sesi Anda telah berakhir');
+        router.push('/login');
+      } else if (res.status === 403) {
+        // Access denied
+        toast.error('Akses ditolak - hanya admin yang dapat mengakses');
+        router.push('/');
+      } else {
+        throw new Error('Failed to fetch stats');
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      setError('Gagal memuat statistik');
       toast.error('Gagal memuat statistik');
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Fetch stats error:', error);
-    toast.error('Gagal memuat statistik');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const pieData = [
     { name: 'Menunggu', value: stats.pendingComplaints, color: '#f59e0b' },
     { name: 'Diproses', value: stats.inProgressComplaints, color: '#3b82f6' },
     { name: 'Selesai', value: stats.resolvedComplaints, color: '#10b981' },
+    { name: 'Ditolak', value: stats.rejectedComplaints, color: '#ef4444' },
   ];
 
   const statCards = [
@@ -250,7 +257,7 @@ const fetchStats = async () => {
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={pieData}
+                data={pieData.filter(item => item.value > 0)}
                 cx="50%"
                 cy="50%"
                 innerRadius={60}
@@ -258,7 +265,7 @@ const fetchStats = async () => {
                 paddingAngle={2}
                 dataKey="value"
               >
-                {pieData.map((entry, index) => (
+                {pieData.filter(item => item.value > 0).map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
@@ -273,7 +280,7 @@ const fetchStats = async () => {
             </PieChart>
           </ResponsiveContainer>
           <div className="flex justify-center space-x-6 mt-4">
-            {pieData.map((entry, index) => (
+            {pieData.filter(item => item.value > 0).map((entry, index) => (
               <div key={index} className="flex items-center space-x-2">
                 <div 
                   className="w-3 h-3 rounded-full" 
@@ -283,6 +290,11 @@ const fetchStats = async () => {
               </div>
             ))}
           </div>
+          {pieData.every(item => item.value === 0) && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-500">Belum ada data aduan</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -318,5 +330,4 @@ const fetchStats = async () => {
       </div>
     </div>
   );
-
 }
