@@ -3,10 +3,10 @@ import { ComplaintModel } from '@/models/Complaint';
 import { getTokenFromRequest, verifyToken } from '@/lib/auth';
 
 interface Params {
-  id: string;
+  params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, { params }: { params: Params }) {
+export async function GET(request: NextRequest, { params }: Params) {
   try {
     const token = getTokenFromRequest(request);
     if (!token) {
@@ -24,7 +24,10 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
       );
     }
 
-    const complaint = await ComplaintModel.findById(params.id);
+    // Await the params Promise
+    const { id } = await params;
+
+    const complaint = await ComplaintModel.findById(id);
     if (!complaint) {
       return NextResponse.json(
         { message: 'Aduan tidak ditemukan' },
@@ -50,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Params }) {
+export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const token = getTokenFromRequest(request);
     if (!token) {
@@ -68,10 +71,13 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
       );
     }
 
+    // Await the params Promise
+    const { id } = await params;
+
     const body = await request.json();
     const { status, adminNotes } = body;
 
-    const success = await ComplaintModel.updateStatus(params.id, status, adminNotes);
+    const success = await ComplaintModel.updateStatus(id, status, adminNotes);
     
     if (!success) {
       return NextResponse.json(
