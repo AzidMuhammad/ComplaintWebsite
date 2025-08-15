@@ -5,10 +5,10 @@ import { ObjectId } from 'mongodb';
 import bcrypt from 'bcryptjs';
 
 interface Params {
-  id: string;
+  params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, { params }: { params: Params }) {
+export async function GET(request: NextRequest, { params }: Params) {
   try {
     const token = getTokenFromRequest(request);
     if (!token) {
@@ -26,9 +26,12 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
       );
     }
 
+    // Await the params Promise
+    const { id } = await params;
+
     const db = await getDatabase();
     const user = await db.collection('users').findOne(
-      { _id: new ObjectId(params.id) },
+      { _id: new ObjectId(id) },
       { projection: { password: 0 } }
     );
 
@@ -50,7 +53,7 @@ export async function GET(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-export async function PUT(request: NextRequest, { params }: { params: Params }) {
+export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const token = getTokenFromRequest(request);
     if (!token) {
@@ -67,6 +70,9 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
         { status: 403 }
       );
     }
+
+    // Await the params Promise
+    const { id } = await params;
 
     const body = await request.json();
     const { name, email, phone, role, password } = body;
@@ -86,7 +92,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
     if (email) {
       const existingUser = await db.collection('users').findOne({ 
         email, 
-        _id: { $ne: new ObjectId(params.id) } 
+        _id: { $ne: new ObjectId(id) } 
       });
       if (existingUser) {
         return NextResponse.json(
@@ -97,7 +103,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
     }
 
     const result = await db.collection('users').updateOne(
-      { _id: new ObjectId(params.id) },
+      { _id: new ObjectId(id) },
       { $set: updateData }
     );
 
@@ -119,7 +125,7 @@ export async function PUT(request: NextRequest, { params }: { params: Params }) 
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Params }) {
+export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     const token = getTokenFromRequest(request);
     if (!token) {
@@ -137,10 +143,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
       );
     }
 
+    // Await the params Promise
+    const { id } = await params;
+
     const db = await getDatabase();
     
     const complaintCount = await db.collection('complaints').countDocuments({
-      userId: new ObjectId(params.id)
+      userId: new ObjectId(id)
     });
 
     if (complaintCount > 0) {
@@ -151,7 +160,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Params 
     }
 
     const result = await db.collection('users').deleteOne({
-      _id: new ObjectId(params.id)
+      _id: new ObjectId(id)
     });
 
     if (result.deletedCount === 0) {
