@@ -25,12 +25,14 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
+        credentials: 'include', // Important: This ensures cookies are sent/received
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem('token', data.token);
+        // Store user data in localStorage for UI purposes only
+        // The token is now handled via HTTP-only cookies
         localStorage.setItem('user', JSON.stringify(data.user));
         
         toast.success('Login berhasil!');
@@ -40,10 +42,14 @@ export default function LoginPage() {
         } else {
           router.push('/dashboard');
         }
+        
+        // Force a page refresh to ensure middleware picks up the new cookie
+        router.refresh();
       } else {
         toast.error(data.message || 'Login gagal');
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast.error('Terjadi kesalahan pada server');
     } finally {
       setLoading(false);
