@@ -51,42 +51,37 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Token tidak ditemukan');
-      }
+// Example of how to call the admin stats API in your admin dashboard component
 
-      const res = await fetch('/api/stats', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+const fetchStats = async () => {
+  try {
+    const res = await fetch('/api/admin/stats', {
+      method: 'GET',
+      credentials: 'include', // This ensures cookies are sent
+    });
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
-          return;
-        }
-        throw new Error('Failed to fetch stats');
-      }
-
+    if (res.ok) {
       const data = await res.json();
+      // Handle the successful response
       setStats(data);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      setError('Gagal memuat statistik');
-    } finally {
-      setLoading(false);
+    } else if (res.status === 401) {
+      // Token invalid or expired
+      toast.error('Sesi Anda telah berakhir');
+      router.push('/login');
+    } else if (res.status === 403) {
+      // Access denied
+      toast.error('Akses ditolak - hanya admin yang dapat mengakses');
+      router.push('/');
+    } else {
+      toast.error('Gagal memuat statistik');
     }
-  };
+  } catch (error) {
+    console.error('Fetch stats error:', error);
+    toast.error('Gagal memuat statistik');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const pieData = [
     { name: 'Menunggu', value: stats.pendingComplaints, color: '#f59e0b' },
@@ -323,4 +318,5 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
+
 }
